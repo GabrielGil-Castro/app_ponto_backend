@@ -1,0 +1,18 @@
+{
+  "development": {
+    "username": "root",
+    "password": "root",
+    "database": "ponto_dev",
+    "host":     "localhost",
+    "port":     3306,
+    "dialect":  "mysql"
+  },
+  "production": {
+    "username": "root",
+    "password": null,
+    "database": "ponto_prod",
+    "host":     "db",
+    "port":     3306,
+    "dialect":  "mysql"
+  }
+}
