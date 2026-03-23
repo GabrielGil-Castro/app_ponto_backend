@@ -1,4 +1,3 @@
-// src/controllers/adminController.js
 const bcrypt          = require('bcryptjs');
 const { User, PunchRecord } = require('../models');
 
@@ -53,4 +52,34 @@ async function listRecords(req, res) {
   return res.json(records);
 }
 
-module.exports = { listUsers, createUser, listRecords };
+async function deleteUser(req, res) {
+  const { id } = req.params;
+
+  const user = await User.findByPk(id);
+
+  if (!user) {
+    return res.status(404).json({ message: 'Usuario nao encontrado.' });
+  }
+
+  if (user.role === 'admin') {
+    return res.status(403).json({ message: 'Nao e possivel excluir um administrador.' });
+  }
+
+  await user.destroy();
+  return res.status(204).send();
+}
+
+async function deleteRecord(req, res) {
+  const { id } = req.params;
+
+  const record = await PunchRecord.findByPk(id);
+
+  if (!record) {
+    return res.status(404).json({ message: 'Registro nao encontrado.' });
+  }
+
+  await record.destroy();
+  return res.status(204).send();
+}
+
+module.exports = { listUsers, createUser, listRecords, deleteRecord, deleteUser };
