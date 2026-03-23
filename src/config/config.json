@@ -9,7 +9,7 @@
   },
   "production": {
     "username": "root",
-    "password": null,
+    "password": "ponto_pass_123",
     "database": "ponto_prod",
     "host":     "db",
     "port":     3306,
