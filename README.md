@@ -1,78 +1,163 @@
 # Ponto App — Backend
 
-API REST para sistema de registro de ponto. Desenvolvido com Node.js, Express e MySQL.
+API REST para registro de ponto eletrônico com autenticação JWT, controle de perfis (admin/funcionário) e deploy em produção via Railway.
 
-## Stack
+🌐 **Deploy:** Railway  
+💻 **Frontend:** [app-ponto-frontend.vercel.app](https://app-ponto-frontend.vercel.app)
 
-- Node.js + Express v5
-- Sequelize v6 + MySQL
-- JWT + bcrypt
-- Docker
+> **Repositório frontend:** [app_ponto_frontend](https://github.com/GabrielGil-Castro/app_ponto_frontend)
+
+---
 
 ## Funcionalidades
 
 - Autenticação com JWT
-- Perfis: `admin` e `employee`
-- Registro de ponto com timestamp
-- Painel admin: gerenciar usuários e registros
+- Registro de ponto eletrônico com um clique
+- Histórico de registros por funcionário
+- Painel administrativo com CRUD de usuários
+- Proteção de rotas por perfil (admin/employee)
+- Admin não pode ser excluído do sistema
+- Deploy containerizado com Docker
+
+---
+
+## Stack
+
+| Tecnologia | Uso |
+|---|---|
+| Node.js 23 + Express v5 | Runtime e framework HTTP |
+| Sequelize v6 + MySQL 8 | ORM + banco de dados |
+| JWT (jsonwebtoken) | Autenticação |
+| bcryptjs | Hash de senhas |
+| Docker + Docker Compose | Containerização |
+
+---
 
 ## Como rodar localmente
 
-### Pré-requisitos
-- Node.js 23+
-- Docker Desktop
+**Pré-requisitos:** Node.js 23+, Docker
 
-### Setup
 ```bash
-# instalar dependências
+# 1. Clonar o repositório
+git clone https://github.com/GabrielGil-Castro/app_ponto_backend.git
+cd app_ponto_backend
+
+# 2. Instalar dependências
 npm install
 
-# subir o banco
-docker compose up -d db
+# 3. Configurar variáveis de ambiente
+# Criar .env.development na raiz com o conteúdo abaixo
 
-# rodar em desenvolvimento
+# 4. Rodar seeds (usuários padrão)
+npx sequelize-cli db:seed:all
+
+# 5. Iniciar servidor
 npm run dev
+# Disponível em http://localhost:3001
 ```
 
 ### Variáveis de ambiente
 
-Crie um arquivo `.env` na raiz do projeto:
-```
+```env
 DB_HOST=localhost
 DB_PORT=3306
-DB_NAME=ponto_dev
+DB_NAME=ponto_db
 DB_USER=root
-DB_PASS=root
-JWT_SECRET=dev_secret
+DB_PASS=sua-senha
+JWT_SECRET=seu-secret-local
 PORT=3001
 NODE_ENV=development
 ```
 
-### Seeds
+### Rodando com Docker
+
 ```bash
-npx sequelize-cli db:seed:all
+# Na raiz do monorepo (sobe MySQL + backend + frontend)
+docker compose up
 ```
 
-Cria os usuários padrão:
+---
+
+## Usuários padrão (Seeds)
+
 | Email | Senha | Perfil |
-|-------|-------|--------|
+|---|---|---|
 | admin@ponto.com | admin123 | admin |
 | funcionario@ponto.com | func123 | employee |
+
+> ⚠️ Troque as senhas antes de qualquer deploy em produção.
+
+---
 
 ## Endpoints
 
 | Método | Rota | Auth | Descrição |
-|--------|------|------|-----------|
-| POST | /auth/login | Pública | Login |
-| POST | /punch | Employee/Admin | Bater ponto |
-| GET | /punch/my | Employee/Admin | Meus registros |
-| GET | /admin/users | Admin | Listar usuários |
-| POST | /admin/users | Admin | Criar usuário |
-| DELETE | /admin/users/:id | Admin | Excluir usuário |
-| GET | /admin/records | Admin | Todos os registros |
-| DELETE | /admin/records/:id | Admin | Excluir registro |
+|---|---|---|---|
+| GET | `/health` | Pública | Health check |
+| POST | `/auth/login` | Pública | Login — retorna JWT |
+| POST | `/punch` | Autenticado | Registrar ponto |
+| GET | `/punch/my` | Autenticado | Meus registros (últimos 20) |
+| GET | `/admin/users` | Admin | Listar usuários |
+| POST | `/admin/users` | Admin | Criar usuário |
+| DELETE | `/admin/users/:id` | Admin | Excluir usuário |
+| GET | `/admin/records` | Admin | Todos os registros (últimos 50) |
+| DELETE | `/admin/records/:id` | Admin | Excluir registro |
 
-## Rodar em produção
-```bash
-docker compose -f docker-compose.prod.yml --env-file .env.production up --build
+Autenticação via header:
 ```
+Authorization: Bearer <token>
+```
+
+---
+
+## Estrutura
+
+```
+src/
+├── config/
+│   └── database.js         # Conexão Sequelize
+├── controllers/
+│   ├── authController.js   # Login JWT
+│   ├── punchController.js  # Registrar ponto / histórico
+│   └── adminController.js  # CRUD usuários e registros
+├── middlewares/
+│   └── auth.js             # authenticate + authorizeAdmin
+├── models/
+│   ├── User.js
+│   ├── PunchRecord.js
+│   └── index.js            # Associações
+├── routes/
+│   ├── auth.js
+│   ├── punch.js
+│   └── admin.js
+└── server.js
+```
+
+---
+
+## Deploy
+
+Plataforma: **Railway**
+
+Variáveis obrigatórias em produção:
+
+| Variável | Descrição |
+|---|---|
+| `DB_HOST` | Host do MySQL (Railway) |
+| `DB_PORT` | Porta do MySQL (3306) |
+| `DB_NAME` | Nome do banco |
+| `DB_USER` | Usuário do banco |
+| `DB_PASS` | Senha forte |
+| `JWT_SECRET` | String de 64+ caracteres |
+| `PORT` | 3001 |
+| `NODE_ENV` | production |
+
+---
+
+## Decisões técnicas
+
+- **Express v5** — propagação automática de erros async sem try/catch em todos os handlers
+- **Sequelize com `sync({ alter: true })`** em dev — usar migrations explícitas em produção
+- **bcryptjs** (puro JS) — sem dependências nativas, compatível com Docker Alpine
+- **JWT 8h sem refresh token** — adequado para o escopo atual
+- **Docker multi-stage** — build com Node, serve com Nginx; imagem final enxuta
